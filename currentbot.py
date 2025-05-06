@@ -40,9 +40,6 @@ async def classify_image(image_path):
     return tf.keras.applications.mobilenet_v2.decode_predictions(predictions, top=5)[0]
 
 
-TOKEN = "7268432350:AAEFnQA34n6GRtpYM0PH0nMASyZwYbxxQkY"
-
-
 # ===== КЛАВИАТУРЫ =====
 def get_main_keyboard():
     return InlineKeyboardMarkup([
