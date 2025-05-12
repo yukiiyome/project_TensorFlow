@@ -16,8 +16,6 @@ async def classify_image(image_path):
     predictions = model.predict(img_array)
     return tf.keras.applications.mobilenet_v2.decode_predictions(predictions, top=3)[0]
 
-TOKEN = "7268432350:AAHsKSTvVRN8ZbQTKMuS9yj30iS1JAZ_g4w"
-
 # Создаем клавиатуру с кнопками
 reply_keyboard = [
     [KeyboardButton("/help"), KeyboardButton("/start")]
