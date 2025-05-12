@@ -1,6 +1,3 @@
-"# project_TensorFlow" 
-"# project_TensorFlow" 
-"# project_TensorFlow" 
-"# project_TensorFlow" 
-"# project_TensorFlow" 
-"# project_TensorFlow" 
+Code was written by Artyom Khaibulin and Pavel Nikitov
+
+(no token here)
