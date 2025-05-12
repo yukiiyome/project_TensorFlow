@@ -3,8 +3,7 @@ from telegram import (
     Update,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
-    BotCommand,
-    InputMediaPhoto
+    BotCommand
 )
 from telegram.ext import (
     Application,
@@ -25,9 +24,8 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# Use __name__ (recommended for modules) or a custom string
-logger = logging.getLogger(__name__)  # Correct way
-# Загружаем модель MobileNetV2
+logger = logging.getLogger(__name__)
+# MobileNetV2
 model = tf.keras.applications.MobileNetV2(weights="imagenet")
 
 
@@ -39,24 +37,22 @@ async def classify_image(image_path):
     predictions = model.predict(img_array)
     return tf.keras.applications.mobilenet_v2.decode_predictions(predictions, top=5)[0]
 
-
-TOKEN = "7268432350:AAEFnQA34n6GRtpYM0PH0nMASyZwYbxxQkY"
-
+TOKEN = "7268432350:AAHsKSTvVRN8ZbQTKMuS9yj30iS1JAZ_g4w"
 
 # ===== КЛАВИАТУРЫ =====
 def get_main_keyboard():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🔄 Анализировать другое фото", callback_data="new_analysis")],
-        [InlineKeyboardButton("❓ Это неточно", callback_data="feedback")],
-        [InlineKeyboardButton("ℹ️ Примеры фото", callback_data="examples")]
+        [InlineKeyboardButton("ℹ️ Примеры фото", callback_data="examples")],
+        [InlineKeyboardButton("✍️ Оставить фидбэк", callback_data="feedback_button")]
     ])
 
 
 def get_examples_keyboard():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🐶 Животные", callback_data="example_animals")],
-        [InlineKeyboardButton("🍎 Еда", callback_data="example_food")],
-        [InlineKeyboardButton("🏠 Достопримечательности", callback_data="example_landmarks")],
+        [InlineKeyboardButton("Животные", callback_data="example_животные")],
+        [InlineKeyboardButton("Еда", callback_data="example_еда")],
+        [InlineKeyboardButton("Достопримечательности", callback_data="example_достопримечательности")],
         [InlineKeyboardButton("🔙 Назад", callback_data="back")]
     ])
 
@@ -104,6 +100,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📌 *Команды:*
 /start - Главное меню
 /help - Эта справка
+/feedback - Оставть обратную свзяь
 """
     await update.message.reply_text(
         help_text,
@@ -132,23 +129,16 @@ async def handle_image(update: Update, context: ContextTypes.DEFAULT_TYPE):
         predictions = await classify_image(image_path)
 
         # Форматируем ответ
-        response = "🔍 *Результаты анализа:*\n\n"
-        response += "🏆 *Топ-5 вероятных вариантов:*\n"
+        response = "🔍 *Результаты анализа изображения:*\n"
+        response += "_(по версии нейросети MobileNetV2)_\n\n"
 
-        for i, (_, label, prob) in enumerate(predictions):
+        medals = ["🥇", "🥈", "🥉"]
+
+        for i, (_, label, prob) in enumerate(predictions[:3]):
             confidence = prob * 100
-            bar_length = int(confidence / 5)
-            progress_bar = "[" + "█" * bar_length + " " * (20 - bar_length) + "]"
-            if i == 0:
-                response += f"🥇 {label}: {confidence:.1f}%\n{progress_bar}\n\n"
-            elif i == 1:
-                response += f"🥈 {label}: {confidence:.1f}%\n{progress_bar}\n\n"
-            elif i == 2:
-                response += f"🥉 {label}: {confidence:.1f}%\n{progress_bar}\n\n"
-            else:
-                response += f"▫️ {label}: {confidence:.1f}%\n{progress_bar}\n\n"
-            
-        response += "\n_Уверенность модели может варьироваться в зависимости от качества изображения_"
+            response += f"{medals[i]} *{label}* — {confidence:.1f}%\n"
+
+        response += "\n📌 _Чем выше процент — тем больше уверенность модели_"
 
         await update.message.reply_text(
             response,
@@ -180,7 +170,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Попробуйте сделать фото с разных ракурсов для лучшего результата.",
             parse_mode="Markdown"
         )
-    elif query.data == "feedback":
+    elif query.data == "feedback_button":
         await query.edit_message_text(
             "✍️ *Обратная связь*\n\n"
             "Напишите, что действительно было на изображении, и мы учтём это для улучшения модели!\n\n"
@@ -197,9 +187,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data.startswith("example_"):
         category = query.data.replace("example_", "")
         examples = {
-            "animals": ["🐶 Собака", "🐱 Кошка", "🦜 Птица"],
-            "food": ["🍎 Яблоко", "🍕 Пицца", "🍰 Торт"],
-            "landmarks": ["🗽 Статуя Свободы", "🗼 Эйфелева башня", "🏛 Колизей"]
+            "животные": ["🐶 Собака", "🐱 Кошка", "🦜 Птица"],
+            "еда": ["🍎 Яблоко", "🍕 Пицца", "🍰 Торт"],
+            "достопримечательности": ["🗽 Статуя Свободы", "🗼 Эйфелева башня", "🏛 Колизей"]
         }
 
         await query.edit_message_text(
@@ -216,13 +206,31 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=get_main_keyboard()
         )
 
+# ===== ОБРАТНАЯ СВЯЗЬ =====
+async def feedback_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /feedback"""
+    user_feedback = ' '.join(context.args)
+    if user_feedback:
+        logger.info(f"Feedback from {update.effective_user.id}: {user_feedback}")
+        await update.message.reply_text(
+            "✅ Спасибо! Ваш отзыв получен.",
+            reply_markup=get_main_keyboard()
+        )
+    else:
+        await update.message.reply_text(
+            "❗ Пожалуйста, укажите корректный текст отзыва после команды. Пример:\n\n"
+            "`/feedback Это была кошка, а не собака.`",
+            parse_mode="Markdown",
+            reply_markup=get_main_keyboard()
+        )
 
 # ===== НАСТРОЙКА БОТА =====
 async def post_init(application):
     """Настройка команд меню"""
     await application.bot.set_my_commands([
         BotCommand("start", "Перезапустить бота"),
-        BotCommand("help", "Помощь по использованию")
+        BotCommand("help", "Помощь по использованию"),
+        BotCommand("feedback", "Отправить отзыв")
     ])
 
 
@@ -233,6 +241,7 @@ def main():
     # Регистрируем обработчики
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("feedback", feedback_command))
     application.add_handler(MessageHandler(filters.PHOTO, handle_image))
     application.add_handler(CallbackQueryHandler(button_handler))
 
